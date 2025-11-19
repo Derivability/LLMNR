@@ -7,3 +7,8 @@ Originally intended to run on Windows OS, but building is implement via MinGW on
 ```
 make
 ```
+
+## Usage
+```
+llmnr.exe <IP to specify in LLMNR response>
+```
