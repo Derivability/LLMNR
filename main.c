@@ -34,10 +34,10 @@ int determine_ip_type(char* ipType) {
 
 
 int main(int argc, char **argv) {
-	if(argc < 2)
+	if(argc < 3)
 	{
 		printf("Wrong number of arguments.\n");
-		printf("%s <IP to specify in LLMNR response>\n", argv[0]);
+		printf("%s <Name> <IP to specify in LLMNR response>\n", argv[0]);
 		return 1;
 	}
 
@@ -50,10 +50,18 @@ int main(int argc, char **argv) {
 	unsigned char reqName[BUF_SIZE];
 	unsigned char ipType[4];
     unsigned char buffer[BUF_SIZE];
+    unsigned char name[MAX_NAME_LEN];
 	unsigned char ip[4];
 	unsigned char tid[2];
 
-	sscanf(argv[1], "%hhu.%hhu.%hhu.%hhu", &ip[0], &ip[1], &ip[2], &ip[3]);
+	if (strlen(argv[1]) > MAX_NAME_LEN)
+	{
+		printf("Error: Name is longer than the limit (256)");
+		return 1;
+	}
+	memset(name, 0, MAX_NAME_LEN);
+	memcpy(name, argv[1], strlen(argv[1]));
+	sscanf(argv[2], "%hhu.%hhu.%hhu.%hhu", &ip[0], &ip[1], &ip[2], &ip[3]);
 
 	unsigned char r1[] = {
 		0xff, 0xff, // Tid
@@ -124,16 +132,23 @@ int main(int argc, char **argv) {
         WSACleanup();
         return 1;
     }
-	
-	// Receive a message from the client
-	recvLen = recvfrom(sock, buffer, BUF_SIZE, 0, (struct sockaddr*)&clientAddr, &addrLen);
-	if (recvLen == SOCKET_ERROR) {
-		printf("recvfrom failed: %d\n", WSAGetLastError());
-		return 1;
-	}
-	
-	nameLen = buffer[12];
-	memcpy(QuestionName, buffer + 13, nameLen);
+    while(1)
+	{
+		memset(QuestionName, 0, MAX_NAME_LEN);
+		// Receive a message from the client
+		recvLen = recvfrom(sock, buffer, BUF_SIZE, 0, (struct sockaddr*)&clientAddr, &addrLen);
+		if (recvLen == SOCKET_ERROR) {
+			printf("recvfrom failed: %d\n", WSAGetLastError());
+			return 1;
+		}
+		
+		nameLen = buffer[12];
+		memcpy(QuestionName, buffer + 13, nameLen);
+		if(strcmp(QuestionName, name) == 0)
+		{
+			break;
+		}
+    }
 	memcpy(ipType, buffer + recvLen - 4, 4);
 	memcpy(tid, buffer, 2);
 	
